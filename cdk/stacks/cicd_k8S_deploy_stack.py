@@ -193,77 +193,18 @@ class CICDK8sDeployStack(Stack):
                             "echo Configuring kubectl for EKS cluster...",
                             "aws eks update-kubeconfig --name $CLUSTER_NAME --region $AWS_REGION",
                             "echo Cloning GitOps repository...",
-                            "git clone https://github.com/Piercuta/eks-git-ops.git || echo 'Repository already exists'",
-                            "cd eks-git-ops"
+                            "git clone https://github.com/Piercuta/eks-auto-cdk-gitops.git || echo 'Repository already exists'",
+                            "cd eks-auto-cdk-gitops/git-ops"
                         ]
                     },
                     "build": {
                         "commands": [
                             "echo Applying AWS auth configmap...",
-                            '\n'.join([
-                                'cat <<EOF | kubectl apply -f -',
-                                'apiVersion: v1',
-                                'kind: ConfigMap',
-                                'metadata:',
-                                '  name: aws-auth',
-                                '  namespace: kube-system',
-                                'data:',
-                                '  mapRoles: |',
-                                '    - rolearn: arn:aws:iam::532673134317:role/piercuta-dev-karpenter-node-role',
-                                '      username: system:node:{{EC2PrivateDNSName}}',
-                                '      groups:',
-                                '        - system:bootstrappers',
-                                '        - system:nodes',
-                                '    - rolearn: arn:aws:iam::532673134317:role/piercuta-dev-eks-node-role',
-                                '      username: system:node:{{EC2PrivateDNSName}}',
-                                '      groups:',
-                                '        - system:bootstrappers',
-                                '        - system:nodes',
-                                'EOF'
-                            ]),
                             "kubectl create namespace argocd || true",
                             # "kubectl apply -f apps/argocd-bootstrap.yaml",
                             "kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml",
                             "kubectl apply -f apps/apps-bootstrap.yaml",
-                            # 'kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d && echo',
-                            # "kubectl port-forward -n argocd svc/argocd-server 8080:443",
-                            # "sudo journalctl -u kubelet -f"
-                            # kubectl -n kube-system get configmap aws-auth -o yaml
-                            # cat << EOF | kubectl apply - f -
-                            # apiVersion: v1
-                            # kind: ConfigMap
-                            # metadata:
-                            # name: aws - auth
-                            # namespace: kube - system
-                            # data:
-                            # mapRoles: |
-                            # - rolearn: arn:aws:iam::532673134317:role / piercuta - dev - karpenter - node - role
-                            # username: system:node:{{EC2PrivateDNSName}}
-                            # groups:
-                            # - system:bootstrappers
-                            # - system:nodes
-                            # - rolearn: arn:aws:sts::532673134317:assumed - role / piercuta - dev - karpenter - node - role
-                            # username: system:node:{{EC2PrivateDNSName}}
-                            # groups:
-                            # - system:bootstrappers
-                            # - system:nodes
-                            # - rolearn: arn:aws:iam::532673134317:role / piercuta - dev - eks - node - role
-                            # username: system:node:{{EC2PrivateDNSName}}
-                            # groups:
-                            # - system:bootstrappers
-                            # - system:nodes
-                            # EOF
-
-                            # probleme csr peut etre ajouter le sg contrl plane sur chaque instance...
-
-                            # comprendre les instances profile également avec karpetner node role, ça
-                            # ajoute des choses en plus ???
-                            # et voir aussi le fait que le cluster soit public private...
-                            # voir aussi tags sur instances....
-                            # ajouter role to vpc cni addons.... like kaprnenter demo...
-
-                            # kubernetes.io/cluster/piercuta-karpenter-demo owned sur le securitygroupid du cluster
-
+                            "kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d && echo"
                         ]
                     },
                 },

@@ -60,7 +60,7 @@ class EksCluster(Construct):
         self.kube_proxy_addon = self._create_kube_proxy_addon()
         self.coredns_addon = self._create_coredns_addon()
         self.pod_identity_agent_addon = self._create_pod_identity_agent_addon()
-        self.cloudwatch_observability_addon = self._create_cloudwatch_observability_addon()
+        # self.cloudwatch_observability_addon = self._create_cloudwatch_observability_addon()
 
         self.alb_controller_role = self._create_alb_controller_role()
         self._create_pod_identity_association(
@@ -153,7 +153,7 @@ class EksCluster(Construct):
 
     def _create_node_role(self) -> iam.Role:
         """Create IAM role for EKS nodes."""
-        cloudwatch_observability_managed_policy = self._create_cloudwatch_observability_managed_policy()
+        # cloudwatch_observability_managed_policy = self._create_cloudwatch_observability_managed_policy()
 
         role = iam.Role(
             self, "EksNodeRole",
@@ -163,7 +163,7 @@ class EksCluster(Construct):
                 iam.ManagedPolicy.from_aws_managed_policy_name("AmazonEKSWorkerNodeMinimalPolicy"),
                 iam.ManagedPolicy.from_aws_managed_policy_name("AmazonEC2ContainerRegistryPullOnly"),
                 iam.ManagedPolicy.from_aws_managed_policy_name("AmazonSSMManagedInstanceCore"),
-                cloudwatch_observability_managed_policy,
+                # cloudwatch_observability_managed_policy,
             ],
             description="IAM role for EKS worker nodes",
         )
@@ -256,8 +256,20 @@ class EksCluster(Construct):
             ),
             compute_config=eks.CfnCluster.ComputeConfigProperty(
                 enabled=True,
-                # node_pool=[],
+                node_pools=["system", "general-purpose"],
                 node_role_arn=self.auto_node_role.role_arn
+            ),
+            kubernetes_network_config=eks.CfnCluster.KubernetesNetworkConfigProperty(
+                service_ipv4_cidr="172.20.0.0/16",
+                ip_family="ipv4",
+                elastic_load_balancing=eks.CfnCluster.ElasticLoadBalancingProperty(
+                    enabled=True
+                ),
+            ),
+            storage_config=eks.CfnCluster.StorageConfigProperty(
+                block_storage=eks.CfnCluster.BlockStorageProperty(
+                    enabled=True
+                )
             ),
             # we install addons later
             bootstrap_self_managed_addons=False,
@@ -297,7 +309,8 @@ class EksCluster(Construct):
         Tags.of(cluster).add("ManagedBy", "CDK")
         Tags.of(cluster).add("Environment", self.config.env_name_str)
         Tags.of(cluster).add("Project", self.config.project_name)
-        Tags.of(cluster).add("karpenter.sh/discovery", self.cluster_name)
+
+        cluster.node.add_dependency(self.auto_node_role)
 
         return cluster
 
