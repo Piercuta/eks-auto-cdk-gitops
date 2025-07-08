@@ -5,8 +5,8 @@ metadata:
   namespace: fastapi
   labels:
     app: fastapi
-    project: ${PROJECT_NAME}
-    env: ${ENVIRONMENT}
+    project: piercuta
+    env: dev
   annotations:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
