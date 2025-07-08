@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: fastapi
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: fastapi
+  project: default
+  source:
+    repoURL: 'https://github.com/Piercuta/eks-auto-cdk-gitops.git'
+    targetRevision: main
+    path: git-ops/services/fastapi
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

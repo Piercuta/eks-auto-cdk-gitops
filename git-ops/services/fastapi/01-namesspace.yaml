@@ -4,6 +4,6 @@ metadata:
   name: fastapi
   labels:
     app: fastapi
-    project: ${PROJECT_NAME}
-    env: ${ENVIRONMENT}
+    project: piercuta
+    env: dev
     apiVersion: v1

@@ -5,8 +5,8 @@ metadata:
   namespace: fastapi
   labels:
     app: fastapi
-    project: ${PROJECT_NAME}
-    env: ${ENVIRONMENT}
+    project: piercuta
+    env: dev
 spec:
   type: ClusterIP
   selector:
