@@ -1,0 +1,54 @@
+version: 0.2
+env:
+  shell: bash
+phases:
+  install:
+    commands:
+      - echo Installing kubectl...
+      - curl -O https://s3.us-west-2.amazonaws.com/amazon-eks/1.32.3/2025-04-17/bin/linux/amd64/kubectl
+      - chmod +x ./kubectl
+      - mv ./kubectl /usr/local/bin
+      - kubectl version --client
+  pre_build:
+    commands:
+      - echo "Logging in to Amazon ECR..."
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REPOSITORY_URI
+      - |
+        echo "Branch name : $BRANCH_NAME"
+        IMAGE_TAG="${BRANCH_NAME}"
+        echo "Image tag : $IMAGE_TAG"
+  build:
+    commands:
+      - echo "Building Docker image..."
+      - |
+        docker build -t $ECR_REPOSITORY_URI:$IMAGE_TAG .
+        docker tag $ECR_REPOSITORY_URI:$IMAGE_TAG $ECR_REPOSITORY_URI:latest
+  post_build:
+    commands:
+      - echo "Pushing images to ECR..."
+      - |
+        docker push $ECR_REPOSITORY_URI:$IMAGE_TAG
+        docker push $ECR_REPOSITORY_URI:latest
+
+      - echo "Updating kubeconfig for EKS cluster $CLUSTER_NAME"
+      - aws eks update-kubeconfig --name $CLUSTER_NAME --region $AWS_DEFAULT_REGION
+      
+      - echo "Applying Karpenter manifest..."
+      - envsubst < k8s-manifests/karpenter.yaml | kubectl apply -f -
+      
+      # - echo "Applying Service Account manifest..."
+      # - envsubst < k8s-manifests/service-account.yaml | kubectl apply -f -
+
+      - echo "Applying FastAPI manifest..."
+      - envsubst < k8s-manifests/fastapi.yaml | kubectl apply -f -
+      
+      - echo "Checking deployment..."
+      - kubectl get pods -A -o wide
+
+      - echo "Forcing rollout restart of FastAPI deployment..."
+      - kubectl rollout restart deployment fastapi-app -n fastapi
+      - kubectl rollout status deployment fastapi-app -n fastapi
+
+      - INGRESS_DNS=$(kubectl get ingress fastapi-ingress -n fastapi -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+      - echo "Ingress DNS $INGRESS_DNS"
+      - aws ssm put-parameter --name "$SSM_PARAMETER_NAME" --value "$INGRESS_DNS" --type "String" --overwrite

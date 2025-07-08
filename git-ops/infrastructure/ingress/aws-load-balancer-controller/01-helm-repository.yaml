@@ -1,0 +1,10 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: alb-controller-repo
+  namespace: flux-system
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  interval: 5m
+  url: https://aws.github.io/eks-charts

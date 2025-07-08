@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fastapi-app
+  namespace: fastapi
+  labels:
+    app: fastapi
+    project: ${PROJECT_NAME}
+    env: ${ENVIRONMENT}
+spec:
+  replicas: ${ASG_DESIRED_CAPACITY}
+  selector:
+    matchLabels:
+      app: fastapi
+  template:
+    metadata:
+      labels:
+        app: fastapi
+        project: ${PROJECT_NAME}
+        env: ${ENVIRONMENT}
+        piercuta.com/node-type: fastapi
+    spec:
+      nodeSelector:
+        piercuta.com/node-type: fastapi
+      serviceAccountName: fastapi-sa
+      containers:
+      - name: fastapi
+        image: ${FASTAPI_IMAGE}
+        env:
+        - name: ENV_NAME
+          value: "${ENV_NAME}"
+        - name: PROJECT_NAME
+          value: "${PROJECT_NAME}"
+        - name: POSTGRES_SERVER
+          value: "${POSTGRES_SERVER}"
+        - name: POSTGRES_USER
+          value: "${POSTGRES_USER}"
+        - name: FRONTEND_HOST
+          value: "${FRONTEND_HOST}"
+        - name: AWS_REGION
+          value: "${AWS_REGION}"
+        - name: AWS_SECRET_ARN
+          value: "${AWS_SECRET_ARN}"
+        - name: POSTGRES_DB
+          value: "${POSTGRES_DB}"
+        - name: POSTGRES_PORT
+          value: "${POSTGRES_PORT}"
+        - name: SECRET_KEY
+          value: "${SECRET_KEY}"
+        - name: FIRST_SUPERUSER
+          value: "${FIRST_SUPERUSER}"
+        - name: FIRST_SUPERUSER_PASSWORD
+          value: "${FIRST_SUPERUSER_PASSWORD}"
+        ports:
+        - containerPort: 8000
+        resources:
+          requests:
+            cpu: ${CPU_CAPACITY}
+            memory: ${MEM_CAPACITY}
+          limits:
+            cpu: ${CPU_CAPACITY}
+            memory: ${MEM_CAPACITY}

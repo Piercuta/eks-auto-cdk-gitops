@@ -1,0 +1,229 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: karpenter
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/votre-org/votre-repo-gitops
+    targetRevision: HEAD
+    path: manifests/karpenter
+    helm:
+      values: |
+        # Configuration Karpenter pour EKS
+        serviceAccount:
+          create: true
+          name: karpenter
+          annotations:
+            eks.amazonaws.com/role-arn: ${KARPENTER_ROLE_ARN}  # Utilise l'output CDK
+        
+        # Configuration du cluster
+        clusterName: ${EKS_CLUSTER_NAME}  # Utilise l'output CDK
+        clusterEndpoint: ${EKS_CLUSTER_ENDPOINT}  # Utilise l'output CDK
+        
+        # Configuration des réplicas
+        replicaCount: 1
+        
+        # Configuration des ressources
+        resources:
+          limits:
+            cpu: 1
+            memory: 1Gi
+          requests:
+            cpu: 100m
+            memory: 100Mi
+        
+        # Configuration de la stratégie de déploiement
+        deploymentStrategy:
+          type: RollingUpdate
+          rollingUpdate:
+            maxUnavailable: 1
+        
+        # Configuration des probes
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+        
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8080
+          initialDelaySeconds: 5
+          timeoutSeconds: 5
+          failureThreshold: 3
+        
+        # Configuration des annotations
+        podAnnotations:
+          prometheus.io/scrape: "true"
+          prometheus.io/port: "8080"
+        
+        # Configuration des labels
+        podLabels:
+          app.kubernetes.io/name: karpenter
+          app.kubernetes.io/instance: karpenter
+        
+        # Configuration des variables d'environnement
+        env:
+          - name: AWS_REGION
+            value: ${AWS_REGION}
+          - name: CLUSTER_NAME
+            value: ${EKS_CLUSTER_NAME}
+          - name: CLUSTER_ENDPOINT
+            value: ${EKS_CLUSTER_ENDPOINT}
+        
+        # Configuration de la tolérance pour les nœuds
+        tolerations:
+          - key: "kubernetes.io/os"
+            operator: "Equal"
+            value: "linux"
+            effect: "NoSchedule"
+        
+        # Configuration de l'affinité
+        affinity:
+          podAntiAffinity:
+            preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                  - key: app.kubernetes.io/name
+                    operator: In
+                    values:
+                    - karpenter
+                topologyKey: kubernetes.io/hostname
+        
+        # Configuration des volumes
+        volumes:
+          - name: aws-iam-token
+            projected:
+              sources:
+              - serviceAccountToken:
+                  audience: sts.amazonaws.com
+                  expirationSeconds: 86400
+                  path: token
+        
+        # Configuration des volumeMounts
+        volumeMounts:
+          - name: aws-iam-token
+            mountPath: /var/run/secrets/eks.amazonaws.com/serviceaccount
+            readOnly: true
+        
+        # Configuration des arguments
+        args:
+          - --cluster-name=${EKS_CLUSTER_NAME}
+          - --cluster-endpoint=${EKS_CLUSTER_ENDPOINT}
+          - --aws-default-instance-profile=${KARPENTER_NODE_ROLE_ARN}
+          - --log-level=info
+          - --leader-elect=true
+          - --leader-elect-lease-duration=15s
+          - --leader-elect-renew-deadline=10s
+          - --leader-elect-retry-period=2s
+        
+        # Configuration des ports
+        ports:
+          - name: metrics
+            containerPort: 8080
+            protocol: TCP
+        
+        # Configuration de la sécurité
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          runAsGroup: 1000
+          fsGroup: 1000
+        
+        # Configuration des ressources de cluster
+        clusterRole:
+          create: true
+          rules:
+            - apiGroups: [""]
+              resources: ["nodes", "pods", "services", "persistentvolumeclaims", "persistentvolumes"]
+              verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+            - apiGroups: ["apps"]
+              resources: ["deployments", "statefulsets"]
+              verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+            - apiGroups: ["karpenter.sh"]
+              resources: ["nodeclaims", "nodepools"]
+              verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+            - apiGroups: ["karpenter.k8s.aws"]
+              resources: ["nodeclasses"]
+              verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+        
+        # Configuration des ressources de cluster binding
+        clusterRoleBinding:
+          create: true
+          roleRef:
+            apiGroup: rbac.authorization.k8s.io
+            kind: ClusterRole
+            name: karpenter
+          subjects:
+            - kind: ServiceAccount
+              name: karpenter
+              namespace: karpenter-system
+        
+        # Configuration des webhooks
+        webhook:
+          create: true
+          port: 8443
+          certDir: /tmp/certs
+          certName: tls.crt
+          keyName: tls.key
+          caBundle: ""
+        
+        # Configuration des métriques
+        metrics:
+          service:
+            create: true
+            port: 8080
+            targetPort: 8080
+            type: ClusterIP
+          serviceMonitor:
+            create: false  # À activer si vous utilisez Prometheus Operator
+        
+        # Configuration des logs
+        logging:
+          level: info
+          format: json
+        
+        # Configuration de la haute disponibilité
+        highAvailability:
+          enabled: true
+          replicas: 2
+          podDisruptionBudget:
+            create: true
+            minAvailable: 1
+        
+        # Configuration des annotations de service
+        serviceAnnotations:
+          prometheus.io/scrape: "true"
+          prometheus.io/port: "8080"
+        
+        # Configuration des labels de service
+        serviceLabels:
+          app.kubernetes.io/name: karpenter
+          app.kubernetes.io/instance: karpenter
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: karpenter-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m 
