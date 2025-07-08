@@ -8,9 +8,9 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/Piercuta/eks-git-ops.git
+    repoURL: https://github.com/Piercuta/eks-auto-cdk-gitops.git
     targetRevision: main
-    path: infrastructure/ingress/aws-load-balancer-controller
+    path: git-ops/infrastructure/ingress/aws-load-balancer-controller
   destination:
     server: https://kubernetes.default.svc
     namespace: aws-load-balancer-controller

@@ -8,9 +8,9 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/Piercuta/eks-git-ops.git
+    repoURL: https://github.com/Piercuta/eks-auto-cdk-gitops.git
     targetRevision: main
-    path: infrastructure/ingress/argocd
+    path: git-ops/infrastructure/ingress/argocd
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd

@@ -8,9 +8,9 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: 'https://github.com/Piercuta/eks-git-ops.git'
+    repoURL: 'https://github.com/Piercuta/eks-auto-cdk-gitops.git'
     targetRevision: main
-    path: cluster-config/flux
+    path: git-ops/cluster-config/flux
     directory:
       recurse: true
   destination:

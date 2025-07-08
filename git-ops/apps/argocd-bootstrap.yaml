@@ -11,9 +11,9 @@ spec:
     namespace: argocd
   project: default
   source:
-    repoURL: 'https://github.com/Piercuta/eks-git-ops.git'
+    repoURL: 'https://github.com/Piercuta/eks-auto-cdk-gitops.git'
     targetRevision: main
-    path: cluster-config/argocd
+    path: git-ops/cluster-config/argocd
   syncPolicy:
     automated:
       prune: true
