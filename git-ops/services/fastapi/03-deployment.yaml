@@ -18,10 +18,10 @@ spec:
         app: fastapi
         project: piercuta
         env: dev
-        piercuta.com/node-type: fastapi
+        # piercuta.com/node-type: fastapi
     spec:
-      nodeSelector:
-        piercuta.com/node-type: fastapi
+      # nodeSelector:
+      #   piercuta.com/node-type: fastapi
       serviceAccountName: fastapi-sa
       containers:
       - name: fastapi
